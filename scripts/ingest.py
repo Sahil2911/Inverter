@@ -228,6 +228,27 @@ def write_csv(path: Path, rows: list, fields: list):
                              for k in fields})
 
 
+
+def read_existing(path: Path) -> dict:
+    """Existing processed rows, keyed by date."""
+    if not path.exists():
+        return {}
+    with path.open(newline="") as fh:
+        return {r["date"]: r for r in csv.DictReader(fh) if r.get("date")}
+
+
+def read_existing_sites(path: Path) -> dict:
+    """Existing site rows, grouped by date."""
+    grouped: dict[str, list] = {}
+    if not path.exists():
+        return grouped
+    with path.open(newline="") as fh:
+        for row in csv.DictReader(fh):
+            if row.get("date"):
+                grouped.setdefault(row["date"], []).append(row)
+    return grouped
+
+
 def discover(config: dict, explicit: list[Path]) -> list[Path]:
     if explicit:
         return explicit
@@ -245,18 +266,30 @@ def main() -> int:
                     help="workbooks to ingest (default: every workbook under the "
                          "configured source directories)")
     ap.add_argument("--quiet", action="store_true", help="only print the summary")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="discard the existing dataset and rebuild from the "
+                         "workbooks present now (default: merge into it, so a day "
+                         "whose source file has been tidied away is not lost)")
     args = ap.parse_args()
 
     config = load_config()
     tolerance = config.get("reconciliation_tolerance_kwh", 0.5)
     files = discover(config, args.files)
-    if not files:
-        print("No workbooks found. Nothing to ingest.")
+    if not files and not DAILY_CSV.exists():
+        print("No workbooks found and no existing dataset. Nothing to do.")
         return 0
 
-    by_date: dict[str, dict] = {}
-    site_rows: dict[str, list] = {}
-    gaps: dict[str, dict] = {}
+    # Start from what is already recorded. The workbooks are the source, but once
+    # a day is in the dataset it stays there even if its file is later removed
+    # from Generation/ - otherwise tidying the archive silently erases history.
+    if args.rebuild:
+        by_date, site_rows, gaps = {}, {}, {}
+        carried = 0
+    else:
+        by_date = read_existing(DAILY_CSV)
+        site_rows = read_existing_sites(SITES_CSV)
+        gaps = read_existing(GAPS_CSV)
+        carried = len(by_date)
 
     for path in sorted(files):
         parsed = parse_workbook(path)
@@ -282,7 +315,7 @@ def main() -> int:
                   f"{summary['headline_kwh']:>8.2f} kWh{dated}{note}")
 
     if not by_date:
-        print("No workbook parsed successfully.", file=sys.stderr)
+        print("No workbook parsed and no existing dataset to keep.", file=sys.stderr)
         return 1
 
     PROCESSED.mkdir(parents=True, exist_ok=True)
@@ -295,8 +328,12 @@ def main() -> int:
     write_csv(GAPS_CSV, [gaps[d] for d in sorted(gaps)],
               ["date", "status", "reason", "source_file"])
 
-    flagged = sum(1 for r in daily if r["reconciliation_flags"])
-    print(f"\n{len(daily)} day(s) ingested, {len(flat_sites)} site-rows, "
+    flagged = sum(1 for r in daily if r.get("reconciliation_flags"))
+    fresh = len(by_date) - carried
+    print(f"\n{len(daily)} day(s) in the dataset ({len(files)} workbook(s) read"
+          + (f", {fresh} new day(s)" if fresh > 0 else "")
+          + (f", {carried} carried forward" if carried else "")
+          + f"), {len(flat_sites)} site-rows, "
           f"{len(gaps)} blank/unreadable report(s), "
           f"{flagged} day(s) with totals that do not reconcile")
     return 0

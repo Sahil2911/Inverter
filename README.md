@@ -45,8 +45,18 @@ python scripts/irradiance.py [--start YYYY-MM-DD] [--end YYYY-MM-DD]
 python scripts/build_dashboard.py
 ```
 
-Re-running is safe and produces byte-identical output — the whole dataset is
-rebuilt from the workbooks each time, so a corrected file just takes effect.
+Re-running is safe and produces byte-identical output.
+
+**The dataset outlives its source files.** Ingest *merges* into
+`data/processed/` rather than replacing it, so once a day is recorded it stays
+recorded even if its workbook is later tidied out of `Generation/`. Dropping an
+old month to keep the repo small therefore costs you nothing on the dashboard.
+Re-adding a corrected workbook still overwrites that day. To deliberately
+rebuild from only the workbooks present right now:
+
+```bash
+python scripts/ingest.py --rebuild
+```
 
 ## Irradiance
 
