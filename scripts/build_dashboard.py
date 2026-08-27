@@ -759,6 +759,8 @@ def render_body(ctx: dict) -> str:
     else:
         tabs = ""
 
+    through = max([r["date"] for r in records], default=None)
+    through = through or "1970-01-01"
     src = cfg["irradiance_source"]
     foot = (
         '<footer>'
@@ -772,7 +774,9 @@ def render_body(ctx: dict) -> str:
         f'{esc(loc["latitude"])}°N {esc(loc["longitude"])}°E ({esc(loc["label"])}), '
         f'daily global horizontal irradiation converted from MJ/m² at 3.6 MJ = 1 kWh. '
         f'{len(irr_days)} day(s) loaded.</p>'
-        f'<p>Board rebuilt {esc(datetime.now().strftime("%d %b %Y, %H:%M"))} · '
+        # Derived from the data, not the clock: a rebuild that changes nothing
+        # then produces an identical file, so scheduled runs commit nothing.
+        f'<p>Board reflects data through {esc(pretty_date(through))} · '
         'performance ratio uses nameplate DC capacity from the workbook’s CAPACITY row.</p>'
         '</footer>')
 
