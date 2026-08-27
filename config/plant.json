@@ -1,0 +1,28 @@
+{
+  "site_name": "IFFCO Kalol",
+  "location": {
+    "label": "IFFCO Kalol, Gujarat, India",
+    "latitude": 23.2456,
+    "longitude": 72.4986,
+    "timezone": "Asia/Kolkata"
+  },
+  "irradiance_source": {
+    "provider": "Open-Meteo",
+    "archive_endpoint": "https://archive-api.open-meteo.com/v1/archive",
+    "forecast_endpoint": "https://api.open-meteo.com/v1/forecast",
+    "variables": [
+      "shortwave_radiation_sum",
+      "sunshine_duration"
+    ],
+    "note": "shortwave_radiation_sum is daily global horizontal irradiation (GHI) in MJ/m2; divided by 3.6 to give kWh/m2."
+  },
+  "history_start": "2026-06-29",
+  "reconciliation_tolerance_kwh": 0.5,
+  "dashboard": {
+    "artifact_url": "https://claude.ai/code/artifact/b711d5e9-c63c-42cd-87ee-733b87dd1be3",
+    "note": "Republish dashboard/artifact.html to this URL to update the board in place."
+  },
+  "source_dirs": [
+    "Generation"
+  ]
+}

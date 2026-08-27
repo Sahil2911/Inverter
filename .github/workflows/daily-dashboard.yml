@@ -1,0 +1,53 @@
+name: Daily solar dashboard
+
+# Power Automate commits each day's workbook under Generation/, which fires the
+# push trigger below - that is the main path. The schedule is a backstop for a
+# day the commit lands late or the run fails, and also refreshes irradiance
+# (recent days start as forecast and firm up to reanalysis a few days later).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Generation/**"
+      - "scripts/**"
+      - "config/**"
+  schedule:
+    - cron: "0 16 * * *"   # 21:30 IST, an hour after the usual 20:40 delivery
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-dashboard-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        run: python scripts/daily_update.py
+
+      - name: Commit refreshed data and dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Generation/ belongs to Power Automate - only derived output is committed
+          git add -A data dashboard
+          if git diff --staged --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Daily solar update: $(date -u '+%Y-%m-%d')"
+            git push
+          fi
