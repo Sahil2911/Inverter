@@ -19,8 +19,12 @@ permissions:
   contents: write
 
 concurrency:
+  # A bulk backfill pushes many commits in a row. Each rebuilds the whole
+  # dataset, so an in-flight run superseded by a newer push is redundant work -
+  # cancel it and let the newest win. The schedule is the backstop if the last
+  # run of a burst is itself cancelled.
   group: daily-dashboard-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   update:
