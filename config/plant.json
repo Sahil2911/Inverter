@@ -18,10 +18,6 @@
   },
   "history_start": "2026-06-29",
   "reconciliation_tolerance_kwh": 0.5,
-  "dashboard": {
-    "artifact_url": "https://claude.ai/code/artifact/b711d5e9-c63c-42cd-87ee-733b87dd1be3",
-    "note": "Republish dashboard/artifact.html to this URL to update the board in place."
-  },
   "source_dirs": [
     "Generation"
   ]

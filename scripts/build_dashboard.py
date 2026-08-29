@@ -1,11 +1,9 @@
 """Render the solar generation board from the processed CSVs.
 
-Emits two files from one body of content:
-  dashboard/index.html    - standalone page (open locally, or serve via Pages)
-  dashboard/artifact.html - fragment for publishing as a Claude Artifact
-
-Charts are inline SVG computed here, so the page is fully self-contained: no
-chart library, no network calls, nothing to break when it is opened offline.
+Emits dashboard/index.html, which GitHub Pages publishes at the repository's
+Pages URL. Charts are inline SVG computed here, so the page is fully
+self-contained: no chart library, no network calls, nothing to break when it is
+opened offline.
 """
 from __future__ import annotations
 
@@ -827,13 +825,6 @@ def main() -> int:
     check_theme_tokens(css)
     title = "Kalol Solar Board"
     DASHBOARD.mkdir(parents=True, exist_ok=True)
-
-    fragment = (f'<title>{title}</title>\n'
-                f'<link rel="preconnect" href="https://fonts.googleapis.com">\n'
-                f'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-                f'<link rel="stylesheet" href="{FONTS}">\n'
-                f'<style>{css}</style>\n{body}\n')
-    (DASHBOARD / "artifact.html").write_text(fragment)
 
     standalone = ('<!doctype html>\n<html lang="en">\n<head>\n'
                   '<meta charset="utf-8">\n'

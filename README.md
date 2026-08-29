@@ -9,8 +9,7 @@ alongside it.
 ```
 Generation/MM/DD/'YYYY HH:MM.xlsx'   <- Power Automate files each day's workbook here
 data/processed/                      <- the tidy dataset built from those workbooks
-dashboard/index.html                 <- the board (open in any browser)
-dashboard/artifact.html              <- same board, as a publishable fragment
+dashboard/index.html                 <- the board, published by GitHub Pages
 ```
 
 `Generation/` is the archive and belongs to Power Automate — the pipeline only
@@ -109,7 +108,16 @@ Missing days are drawn as breaks in the trend, never as zero.
 
 ## Automation
 
-`.github/workflows/daily-dashboard.yml` runs the pipeline when Power Automate
-pushes a workbook to `Generation/`, plus a 16:00 UTC (21:30 IST) backstop and a
-manual trigger. It commits the refreshed dataset and dashboard — never
-`Generation/` itself.
+`.github/workflows/daily-dashboard.yml` runs the pipeline when a workbook is
+pushed to `Generation/`, then publishes `dashboard/` to GitHub Pages:
+
+**https://sahil2911.github.io/Inverter/**
+
+The workbook is uploaded by hand on working days, so there is no fixed time to
+schedule against — the push is what triggers the rebuild, and the site is
+current a minute or two later whenever the upload happens. The 04:00 UTC
+(09:30 IST) cron only refreshes irradiance, which firms up from forecast to
+reanalysis over the following days, and covers a run that failed.
+
+The workflow commits the refreshed dataset and dashboard — never `Generation/`
+itself, which belongs to Power Automate.
