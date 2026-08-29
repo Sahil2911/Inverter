@@ -1,9 +1,11 @@
 name: Daily solar dashboard
 
-# Power Automate commits each day's workbook under Generation/, which fires the
-# push trigger below - that is the main path. The schedule is a backstop for a
-# day the commit lands late or the run fails, and also refreshes irradiance
-# (recent days start as forecast and firm up to reanalysis a few days later).
+# Power Automate commits each day's workbook under Generation/ at about
+# 08:10-08:40 IST, which fires the push trigger below - that is the main path.
+# (The 20:40 in each filename is when the plant generated the report the
+# previous evening, not when it arrives.) The schedule is a backstop for a day
+# the commit lands late or the run fails, and also refreshes irradiance -
+# recent days start as forecast and firm up to reanalysis a few days later.
 on:
   push:
     branches: [main]
@@ -12,7 +14,7 @@ on:
       - "scripts/**"
       - "config/**"
   schedule:
-    - cron: "0 16 * * *"   # 21:30 IST, an hour after the usual 20:40 delivery
+    - cron: "0 4 * * *"    # 09:30 IST, after the 08:10-08:40 IST delivery window
   workflow_dispatch:
 
 permissions:
