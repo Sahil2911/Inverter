@@ -1,11 +1,10 @@
-name: Daily solar dashboard
+name: Solar dashboard
 
-# Power Automate commits each day's workbook under Generation/ at about
-# 08:10-08:40 IST, which fires the push trigger below - that is the main path.
-# (The 20:40 in each filename is when the plant generated the report the
-# previous evening, not when it arrives.) The schedule is a backstop for a day
-# the commit lands late or the run fails, and also refreshes irradiance -
-# recent days start as forecast and firm up to reanalysis a few days later.
+# The workbook is uploaded by hand on working days, so there is no fixed time to
+# schedule against - the push trigger below is what matters, and it fires the
+# moment the upload lands. The daily cron only refreshes irradiance (recent days
+# start as forecast and firm up to reanalysis a few days later) and covers a run
+# that failed; it is not how new workbooks are noticed.
 on:
   push:
     branches: [main]
@@ -14,11 +13,13 @@ on:
       - "scripts/**"
       - "config/**"
   schedule:
-    - cron: "0 4 * * *"    # 09:30 IST, after the 08:10-08:40 IST delivery window
+    - cron: "0 4 * * *"    # 09:30 IST - irradiance refresh and failed-run cover
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write   # committing the rebuilt dataset and dashboard
+  pages: write      # publishing the dashboard to GitHub Pages
+  id-token: write   # the Pages deploy uses OIDC
 
 concurrency:
   # A bulk backfill pushes many commits in a row. Each rebuilds the whole
@@ -74,3 +75,26 @@ jobs:
           done
           echo "::error::Could not push after 3 attempts."
           exit 1
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Package the dashboard
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+
+  # Publishes dashboard/index.html at the repository's Pages URL, so the link is
+  # current as soon as a run finishes - no schedule to guess an upload time.
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
