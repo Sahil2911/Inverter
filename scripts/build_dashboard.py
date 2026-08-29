@@ -789,10 +789,42 @@ def render_body(ctx: dict) -> str:
             f'{history_note}{panels}{recon}{tabs}{foot}</div>{script}')
 
 
+
+def check_theme_tokens(css: str) -> None:
+    """Every :root token must be redefined in both dark scopes.
+
+    A token defined only on :root and in the media query silently renders its
+    light value for a viewer who explicitly toggles dark mode - the page then
+    puts a light-theme colour on a dark ground. Caught once in review; this
+    keeps it caught.
+    """
+    import re
+
+    def tokens(block: str) -> set:
+        return set(re.findall(r"(--[a-z0-9-]+)\s*:", block))
+
+    try:
+        root = css[css.index(":root {"):css.index("@media (prefers-color-scheme: dark)")]
+        media = css[css.index(':root:not([data-theme="light"])'):
+                    css.index(':root[data-theme="dark"]')]
+        stamp = css[css.index(':root[data-theme="dark"]'):css.index("* { box-sizing")]
+    except ValueError as exc:
+        raise SystemExit(f"dashboard.css: theme scopes not found ({exc})")
+
+    base = tokens(root)
+    for name, block in (("@media dark", media), ('[data-theme="dark"]', stamp)):
+        missing = sorted(base - tokens(block))
+        if missing:
+            raise SystemExit(
+                f"dashboard.css: {', '.join(missing)} defined on :root but not in "
+                f"{name} - it would render its light value there.")
+
+
 def main() -> int:
     ctx = build()
     body = render_body(ctx)
     css = (ASSETS / "dashboard.css").read_text()
+    check_theme_tokens(css)
     title = "Kalol Solar Board"
     DASHBOARD.mkdir(parents=True, exist_ok=True)
 
