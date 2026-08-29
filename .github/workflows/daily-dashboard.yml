@@ -32,6 +32,8 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    outputs:
+      pages_ready: ${{ steps.pages.outcome }}
     steps:
       - uses: actions/checkout@v5
 
@@ -76,12 +78,26 @@ jobs:
           echo "::error::Could not push after 3 attempts."
           exit 1
 
+      # Pages has to be switched on once by a repo admin (Settings > Pages >
+      # Source: GitHub Actions); the workflow token is not allowed to do it. Until
+      # then these steps are skipped rather than failing the data pipeline, and
+      # the deploy job below stays switched off.
       - name: Configure Pages
+        id: pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
+
+      - name: Pages not enabled yet
+        if: steps.pages.outcome != 'success'
+        run: |
+          echo "::notice::GitHub Pages is not enabled for this repository, so the"\
+               "dashboard was not published. Enable it once at Settings > Pages >"\
+               "Build and deployment > Source: GitHub Actions, and the next run"\
+               "will publish. The dataset and dashboard/index.html are up to date"\
+               "in the repository either way."
 
       - name: Package the dashboard
+        if: steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dashboard
@@ -90,6 +106,7 @@ jobs:
   # current as soon as a run finishes - no schedule to guess an upload time.
   deploy:
     needs: update
+    if: needs.update.outputs.pages_ready == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
