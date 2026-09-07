@@ -97,24 +97,28 @@ ratio) use the column sums, since those are the figures that reconcile.
 
 ## Site-level performance
 
-The board carries a **performance ratio grid**: one row per site, one column per
-day, for the last 30 calendar days. Colour is a single-hue sequential ramp, so a
-shade means the same thing in every row and column — the ratio has already
-divided out both array size and that day's sunshine. Days with no report are
-hatched, never shaded, so a delivery gap can't read as a low value.
+The board carries a **per-site performance ratio chart** for the last 30 days,
+with a checkbox for every site.
+
+Up to **three** sites share one chart, each in its own colour. Three is not
+arbitrary: it is the number of hues from this palette that stay apart in every
+possible pairing, in light and dark, for normal and colour-deficient vision.
+Tick a fourth and the view switches to one small panel per site on a shared
+y-scale — the honest alternative to a colour nobody can reliably name. A site
+keeps its colour while it is on screen, so unticking one never repaints the
+others. Days with no report break the line rather than being bridged.
 
 It surfaces two things the daily figures hide:
 
 - **Three sites report an identical figure every single day** — Bank & Post
   Office 41.67 kWh, Admin Cluster 9.00 kWh, GET Hostel 1&2 0.40 kWh, unchanged
-  across all 53 days including days with no recorded sunshine. These are fixed
-  values in the sheet, not measurements; their rows are marked *fixed value* and
-  the board names them explicitly.
-- **Step changes.** Over the last 30 days MCC 14-15 went from 1.2% to 45.9%,
-  Instrument Building 0.0% to 35.1%, MCC-2 0.0% to 25.0% and Technical Building
-  22.0% to 46.6% (first fifteen days vs last fifteen), while Bank & Post Office
-  fell 13.6 points — though that last one is an artefact of its fixed reading
-  divided by changing sunshine.
+  across every day on record including days with no recorded sunshine. These are
+  fixed values in the sheet, not measurements; they are marked *fixed* in the
+  site list and the board names them explicitly.
+- **Step changes.** MCC 14-15, Instrument Building and MCC-2 all went from
+  effectively zero to 25–46% within days of each other in mid-August, and
+  Technical Building roughly doubled over the same period — the signature of
+  maintenance, invisible in the daily kWh total.
 
 ## Data coverage
 

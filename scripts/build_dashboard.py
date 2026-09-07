@@ -392,7 +392,7 @@ def site_pr_matrix(records, site_rows, window=30):
     ghi = {r["date"]: r["ghi"] for r in records if r.get("ghi")}
     gen_days = sorted({r["date"] for r in site_rows})
     if not gen_days:
-        return [], [], {}, {}
+        return [], [], {}, {}, {}
 
     last = date.fromisoformat(gen_days[-1])
     days = [(last - timedelta(days=i)).isoformat() for i in range(window - 1, -1, -1)]
@@ -429,75 +429,25 @@ def site_pr_matrix(records, site_rows, window=30):
             frozen[name] = vals[0]
 
     names = sorted(capacity, key=lambda n: -mean_pr(n))
-    return days, names, cells, frozen
+    return days, names, cells, frozen, capacity
 
 
-def site_pr_heatmap(panel_id, days, names, cells, frozen=None):
-    """Sites x days grid, one hue, light-to-dark by performance ratio."""
-    frozen = frozen or {}
-    if not days or not names:
-        return "", None
-
-    label_w, gap = 214, 2
-    row_h, top_pad, bottom_pad = 20, 20, 26
-    grid_x = label_w + 8
-    grid_w = VIEW_W - grid_x - 8
-    cell_w = grid_w / len(days)
-    height = top_pad + len(names) * (row_h + gap) + bottom_pad
-
-    # A missing day gets a hatch, not a pale fill: on the light ramp the
-    # lightest step is nearly the same grey, and "no data" must never be
-    # mistaken for "nearly zero".
-    parts = [f'<svg viewBox="0 0 {VIEW_W} {height:.0f}" role="img" '
-             f'aria-label="Performance ratio by site over the last '
-             f'{len(days)} days">',
-             '<defs><pattern id="nodata" width="5" height="5" '
-             'patternUnits="userSpaceOnUse" patternTransform="rotate(45)">'
-             '<rect width="5" height="5" fill="var(--heat-none)"/>'
-             '<line x1="0" y1="0" x2="0" y2="5" stroke="var(--ink-3)" '
-             'stroke-width="1.6" opacity="0.5"/></pattern></defs>']
-
-    # date ticks - every fifth day, plus the last
-    step = max(1, len(days) // 6)
-    last_i = len(days) - 1
-    ticks = [i for i in range(0, len(days), step) if last_i - i >= step * 0.6]
-    for i in sorted(set(ticks + [last_i])):
-        x = grid_x + i * cell_w + cell_w / 2
-        anchor = "end" if i == len(days) - 1 else "middle"
-        parts.append(f'<text class="axis" x="{x:.1f}" y="{top_pad - 7}" '
-                     f'text-anchor="{anchor}">{esc(short_date(days[i]))}</text>')
-
-    for r, name in enumerate(names):
-        y = top_pad + r * (row_h + gap)
-        # the suffix eats into the label column, so the name gets less room
-        limit = 18 if name in frozen else 30
-        display = name if len(name) <= limit else name[:limit - 2] + "\u2026"
-        if name in frozen:
-            display += "  \u2014 fixed value"
-        parts.append(f'<text class="site-label" x="{label_w}" '
-                     f'y="{y + row_h / 2 + 3.5:.1f}" text-anchor="end">'
-                     f'{esc(display)}</text>')
-        for c, day in enumerate(days):
-            x = grid_x + c * cell_w
-            cell = cells.get((name, day))
-            w = max(cell_w - gap, 1)
-            if cell is None:
-                parts.append(f'<rect class="cell" x="{x:.1f}" y="{y}" '
-                             f'width="{w:.1f}" height="{row_h}" rx="2" '
-                             f'fill="url(#nodata)"><title>{esc(name)} '
-                             f'\u00b7 {esc(pretty_date(day))} \u2014 no report'
-                             f'</title></rect>')
-                continue
-            shade = pr_bin(cell["pr"])
-            tip = (f'{name} \u00b7 {pretty_date(day)}\n'
-                   f'PR {cell["pr"]:.1f} %  \u00b7  {cell["kwh"]:,.2f} kWh '
-                   f'of {cell["cap"]:,.2f} kW')
-            parts.append(f'<rect class="cell" x="{x:.1f}" y="{y}" width="{w:.1f}" '
-                         f'height="{row_h}" rx="2" fill="var(--heat-{shade + 1})">'
-                         f'<title>{esc(tip)}</title></rect>')
-    parts.append("</svg>")
-    return "".join(parts), None
-
+def site_pr_payload(days, names, cells, frozen, capacity):
+    """The per-site series the browser draws, so selection needs no round trip."""
+    return {
+        "days": days,
+        "labels": [short_date(d) for d in days],
+        "full": [pretty_date(d) for d in days],
+        "sites": [{
+            "name": name,
+            "capacity": capacity.get(name),
+            "frozen": name in frozen,
+            "values": [round(cells[(name, d)]["pr"], 2) if (name, d) in cells else None
+                       for d in days],
+            "kwh": [round(cells[(name, d)]["kwh"], 2) if (name, d) in cells else None
+                    for d in days],
+        } for name in names],
+    }
 
 
 def frozen_notice(frozen: dict) -> str:
@@ -510,9 +460,9 @@ def frozen_notice(frozen: dict) -> str:
             f'<b>{len(frozen)} sites report the same figure every single day</b> — '
             f'{items}. Solar output follows the weather, so an identical reading on '
             'a clear day and on one with no recorded sunshine is a fixed value in '
-            'the sheet, not a measurement. Their rows above are marked '
-            '<i>fixed value</i>: the shading there tracks the day\'s sunshine '
-            'inversely rather than anything the array did, and their generation is '
+            'the sheet, not a measurement. They are marked <i>fixed value</i> in the '
+            'list above; plotting one gives a curve that traces the day\'s sunshine '
+            'upside-down rather than anything the array did. Their generation is '
             'still counted in the plant total.</div></div>')
 
 
@@ -673,8 +623,8 @@ def build() -> dict:
     if pr_meta:
         panels_meta.append(pr_meta)
 
-    pr_days, pr_names, pr_cells, pr_frozen = site_pr_matrix(records, sites, window=30)
-    heat_svg, _ = site_pr_heatmap("p-heat", pr_days, pr_names, pr_cells, pr_frozen)
+    pr_days, pr_names, pr_cells, pr_frozen, pr_cap = site_pr_matrix(
+        records, sites, window=30)
 
     bars_svg, bars_meta = site_bars("p-sites", site_rows, latest_ghi)
     if bars_meta:
@@ -691,9 +641,10 @@ def build() -> dict:
         "gaps": gaps, "cover": cover,
         "diag": diagnose_totals(daily_rows, sites),
         "site_rows": site_rows, "dead": dead, "latest_ghi": latest_ghi,
-        "svg": {"gen": gen_svg, "irr": irr_svg, "pr": pr_svg, "bars": bars_svg,
-                "heat": heat_svg},
+        "svg": {"gen": gen_svg, "irr": irr_svg, "pr": pr_svg, "bars": bars_svg},
         "pr_matrix": (pr_days, pr_names, pr_cells, pr_frozen),
+        "pr_payload": (site_pr_payload(pr_days, pr_names, pr_cells, pr_frozen, pr_cap)
+                       if pr_days else None),
         "panels_meta": panels_meta,
     }
 
@@ -936,25 +887,45 @@ def render_body(ctx: dict) -> str:
                     "Needs both a generation report and irradiance for the same day."))
 
     pr_days, pr_names, pr_cells, pr_frozen = ctx.get("pr_matrix", ([], [], {}, {}))
-    if svg.get("heat") and pr_days:
-        reported = len({d for (_, d) in pr_cells})
+    payload = ctx.get("pr_payload")
+    if payload and pr_days:
+        # Three is the number of hues that stay distinguishable in every pairing,
+        # in both themes, for normal and colour-deficient vision. Past that the
+        # honest move is separate panels, not a fourth colour.
+        boxes = []
+        for i, site in enumerate(payload["sites"]):
+            cap = site["capacity"]
+            note = " · fixed" if site["frozen"] else ""
+            boxes.append(
+                f'<label class="pick"><input type="checkbox" data-site="{i}"'
+                f'{" checked" if i < 3 else ""}>'
+                f'<span class="sw" data-slot=""></span>'
+                f'<span class="nm">{esc(site["name"].title())}</span>'
+                f'<span class="cap">{fnum(cap, 1)} kW{esc(note)}</span></label>')
+
         heat = (
-            '<section class="card panel"><div class="panel-head"><div>'
+            '<section class="card panel" id="p-siteline">'
+            '<div class="panel-head"><div>'
             '<h2>Performance ratio by site, last 30 days</h2>'
-            f'<div class="cap">Each row is one site, each column one day '
-            f'({esc(pretty_date(pr_days[0]))} to {esc(pretty_date(pr_days[-1]))}; '
-            f'{reported} of {len(pr_days)} days reported). Rows are ordered by '
-            'mean performance ratio, best at the top. Because the ratio divides '
-            'out both array size and the day\'s sunshine, colours are comparable '
-            'across every row and column.</div></div>'
+            f'<div class="cap">{esc(pretty_date(pr_days[0]))} to '
+            f'{esc(pretty_date(pr_days[-1]))}. Tick sites to plot them. Up to three '
+            'share one chart; beyond that each gets its own panel on a common '
+            'scale, because a fourth line colour stops being reliably '
+            'distinguishable.</div></div>'
             '<div class="tabs" data-tabs>'
-            '<button class="tab" data-target="heat-chart" aria-selected="true">Grid</button>'
-            '<button class="tab" data-target="heat-table" aria-selected="false">Table</button>'
+            '<button class="tab" data-target="line-chart" aria-selected="true">Chart</button>'
+            '<button class="tab" data-target="line-table" aria-selected="false">Table</button>'
             '</div></div>'
-            f'<div id="heat-chart"><div class="plot">{svg["heat"]}</div>'
-            f'{pr_scale_legend()}{frozen_notice(pr_frozen)}</div>'
-            f'<div id="heat-table" class="hidden">'
+            '<div id="line-chart">'
+            f'<div class="picker">{"".join(boxes)}</div>'
+            '<div class="picker-bar"><button class="tab" id="pick-none">Clear all</button>'
+            '<button class="tab" id="pick-worst">Worst 3</button>'
+            '<button class="tab" id="pick-best">Best 3</button>'
+            '<span class="cap" id="pick-count"></span></div>'
+            '<div class="plot" id="siteplot"><div class="tip"></div></div></div>'
+            f'<div id="line-table" class="hidden">'
             f'{site_pr_table(pr_days, pr_names, pr_cells, pr_frozen)}</div>'
+            f'{frozen_notice(pr_frozen)}'
             '</section>')
     else:
         heat = ""
@@ -998,8 +969,11 @@ def render_body(ctx: dict) -> str:
         '</footer>')
 
     board = {"panels": ctx["panels_meta"]}
-    script = (f'<script>window.__BOARD__={json.dumps(board)};</script>'
-              f'<script>{(ASSETS / "dashboard.js").read_text()}</script>')
+    site_json = json.dumps(ctx.get("pr_payload") or None)
+    script = (f'<script>window.__BOARD__={json.dumps(board)};'
+              f'window.__SITEPR__={site_json};</script>'
+              f'<script>{(ASSETS / "dashboard.js").read_text()}</script>'
+              f'<script>{(ASSETS / "sitechart.js").read_text()}</script>')
 
     recon = reconciliation_panel(latest, ctx.get("diag"))
     return (f'<div class="wrap">{head}{band}'
