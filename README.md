@@ -95,6 +95,27 @@ series on the generation trend, and in a *Printed totals vs column sums* panel
 that names the gap per section. Derived metrics (specific yield, performance
 ratio) use the column sums, since those are the figures that reconcile.
 
+## Site-level performance
+
+The board carries a **performance ratio grid**: one row per site, one column per
+day, for the last 30 calendar days. Colour is a single-hue sequential ramp, so a
+shade means the same thing in every row and column — the ratio has already
+divided out both array size and that day's sunshine. Days with no report are
+hatched, never shaded, so a delivery gap can't read as a low value.
+
+It surfaces two things the daily figures hide:
+
+- **Three sites report an identical figure every single day** — Bank & Post
+  Office 41.67 kWh, Admin Cluster 9.00 kWh, GET Hostel 1&2 0.40 kWh, unchanged
+  across all 53 days including days with no recorded sunshine. These are fixed
+  values in the sheet, not measurements; their rows are marked *fixed value* and
+  the board names them explicitly.
+- **Step changes.** Over the last 30 days MCC 14-15 went from 1.2% to 45.9%,
+  Instrument Building 0.0% to 35.1%, MCC-2 0.0% to 25.0% and Technical Building
+  22.0% to 46.6% (first fifteen days vs last fifteen), while Bank & Post Office
+  fell 13.6 points — though that last one is an artefact of its fixed reading
+  divided by changing sunshine.
+
 ## Data coverage
 
 51 of the 60 days between 29 Jun and 27 Aug 2026 have usable generation data:
