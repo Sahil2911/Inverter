@@ -410,12 +410,22 @@ def site_pr_matrix(records, site_rows, window=30):
             capacity[name] = cap
         irr = ghi.get(day)
         if cap and kwh is not None and irr:
-            cells[(name, day)] = {"pr": kwh / cap / irr * 100, "kwh": kwh, "cap": cap}
+            cells[(name, day)] = {"pr": kwh / cap / irr * 100, "kwh": kwh,
+                                  "cap": cap, "ghi": irr}
 
-    # rank rows by how each site did over the window, best at the top
+    # Rank on the period ratio - total energy against total available sun - not
+    # on the average of the daily ratios. Averaging ratios gives a near-dark day
+    # the same weight as a bright one, and on a dull day the denominator is tiny,
+    # so one odd reading can swing the average. See period_pr() below.
     def mean_pr(name):
-        vals = [c["pr"] for (n, _), c in cells.items() if n == name]
-        return sum(vals) / len(vals) if vals else -1.0
+        rows = [c for (n, _), c in cells.items() if n == name]
+        if not rows:
+            return -1.0
+        total_ghi = sum(c["ghi"] for c in rows)
+        cap = rows[0]["cap"]
+        if not (total_ghi and cap):
+            return -1.0
+        return sum(c["kwh"] for c in rows) / cap / total_ghi * 100
 
     # A site whose reading never moves across the window is not being metered:
     # solar output tracks the weather, so an identical figure on a sunny and an
@@ -483,7 +493,11 @@ def site_pr_table(days, names, cells, frozen=None) -> str:
         if not vals:
             continue
         prs = [v for _, v in vals]
-        mean = sum(prs) / len(prs)
+        rows_ = [cells[(name, d)] for d in days if (name, d) in cells]
+        total_ghi = sum(c["ghi"] for c in rows_)
+        cap0 = rows_[0]["cap"] if rows_ else None
+        mean = (sum(c["kwh"] for c in rows_) / cap0 / total_ghi * 100
+                if (cap0 and total_ghi) else 0.0)
         best_day, best = max(vals, key=lambda kv: kv[1])
         worst_day, worst = min(vals, key=lambda kv: kv[1])
         zero = sum(1 for v in prs if v <= 0.5)
@@ -500,7 +514,7 @@ def site_pr_table(days, names, cells, frozen=None) -> str:
             f'<td>{mean:.1f}</td><td>{best:.1f}</td><td>{worst:.1f}</td>'
             f'<td>{len(prs)}</td><td style="text-align:left">{flag}</td></tr>')
     return ('<div class="scroller"><table><thead><tr><th>Site</th>'
-            '<th>Capacity kW</th><th>Mean PR %</th><th>Best %</th><th>Worst %</th>'
+            '<th>Capacity kW</th><th>Period PR %</th><th>Best %</th><th>Worst %</th>'
             '<th>Days reported</th><th style="text-align:left">Status</th></tr></thead>'
             f'<tbody>{"".join(body)}</tbody></table></div>')
 

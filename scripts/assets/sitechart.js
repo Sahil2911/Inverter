@@ -287,7 +287,7 @@
         var mean = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null;
         return '<div class="mini"><div class="mini-h"><b>' + esc(site.name) + "</b>" +
                (site.frozen ? ' <span class="flag">fixed value</span>' : "") +
-               "<span>" + (mean === null ? "—" : "mean " + mean.toFixed(1) + " %") +
+               "<span>" + (mean === null ? "—" : "avg of days " + mean.toFixed(1) + " %") +
                "</span></div>" + g.svg + "</div>";
       }).join("");
       root.innerHTML = '<div class="minis">' + panels + '</div><div class="tip"></div>';
