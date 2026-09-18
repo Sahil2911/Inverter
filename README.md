@@ -115,6 +115,13 @@ It surfaces two things the daily figures hide:
   across every day on record including days with no recorded sunshine. These are
   fixed values in the sheet, not measurements; they are marked *fixed* in the
   site list and the board names them explicitly.
+- **Readings that cannot be real.** Technical Building reported −223.29 kWh on
+  29 Jun, 252.83 kWh (143% of the available sunlight) on 10 Sep and −144.81 kWh
+  on 17 Sep. An array cannot generate negative energy nor convert more sun than
+  fell on it, so these are meter or data-entry faults. A negative also drags
+  down that day's plant total — 16.3% and 9.1% understated on those two days.
+  The board names them and rings them on the chart; nothing is silently
+  corrected.
 - **Step changes.** MCC 14-15, Instrument Building and MCC-2 all went from
   effectively zero to 25–46% within days of each other in mid-August, and
   Technical Building roughly doubled over the same period — the signature of

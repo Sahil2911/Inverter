@@ -64,6 +64,23 @@
     return best;
   }
 
+
+  /* A faulty meter can report negative generation, so the axis cannot assume a
+     zero floor - otherwise the point is drawn outside the plot area. */
+  function niceRange(min, max) {
+    if (min >= 0) {
+      var t = niceTicks(max || 1);
+      return { lo: 0, hi: t.top, step: t.step };
+    }
+    var t2 = niceTicks((max - min) || 1);
+    var step = t2.step;
+    return {
+      lo: Math.floor(min / step) * step,
+      hi: Math.ceil(max / step) * step,
+      step: step
+    };
+  }
+
   function esc(t) {
     return String(t).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
@@ -88,26 +105,38 @@
     var ml = opt.ml || ML, mr = opt.mr || MR, mb = opt.mb || MB;
     var innerW = w - ml - mr, innerH = height - MT - mb;
     var n = DATA.days.length;
-    var max = opt.sharedMax || 0;
-    if (!opt.sharedMax) {
+    var max = opt.sharedMax || 0, min = opt.sharedMin || 0;
+    if (opt.sharedMax === undefined) {
       indices.forEach(function (i) {
-        DATA.sites[i].values.forEach(function (v) { if (v !== null && v > max) max = v; });
+        DATA.sites[i].values.forEach(function (v) {
+          if (v === null) return;
+          if (v > max) max = v;
+          if (v < min) min = v;
+        });
       });
     }
-    var t = niceTicks(max || 1);
+    var t = niceRange(min, max);
     var showLabels = opt.showLabels;
     var x = function (i) { return ml + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW); };
-    var y = function (v) { return MT + innerH - (v / t.top) * innerH; };
+    var y = function (v) {
+      return MT + innerH - ((v - t.lo) / (t.hi - t.lo)) * innerH;
+    };
     var out = ['<svg viewBox="0 0 ' + w + " " + height + '" role="img" aria-label="' +
                esc(indices.map(function (i) { return DATA.sites[i].name; }).join(", ")) +
                ' performance ratio">'];
 
-    for (var k = 0; k <= t.count; k++) {
-      var gv = t.step * k, gy = y(gv);
+    var nTicks = Math.round((t.hi - t.lo) / t.step);
+    for (var k = 0; k <= nTicks; k++) {
+      var gv = t.lo + t.step * k, gy = y(gv);
       out.push('<line class="grid" x1="' + ml + '" y1="' + gy.toFixed(1) +
                '" x2="' + (ml + innerW) + '" y2="' + gy.toFixed(1) + '"/>');
       out.push('<text class="axis" x="' + (ml - 6) + '" y="' + (gy + 3.5).toFixed(1) +
                '" text-anchor="end">' + (t.step >= 1 ? gv.toFixed(0) : gv.toFixed(1)) + "</text>");
+    }
+
+    if (t.lo < 0) {
+      out.push('<line class="zero" x1="' + ml + '" y1="' + y(0).toFixed(1) +
+               '" x2="' + (ml + innerW) + '" y2="' + y(0).toFixed(1) + '"/>');
     }
 
     var tickStep = Math.max(1, Math.round(n / (opt.xticks || 6))), lastI = n - 1, ticks = [];
@@ -136,6 +165,12 @@
           out.push('<circle cx="' + seg[0][0].toFixed(1) + '" cy="' + seg[0][1].toFixed(1) +
                    '" r="3.5" fill="' + colour + '"/>');
         }
+      });
+      // ring the points that are not physically possible
+      site.values.forEach(function (v, i) {
+        if (v === null || (v >= 0 && v <= 100)) return;
+        out.push('<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) +
+                 '" r="5" fill="none" stroke="var(--crit)" stroke-width="2"/>');
       });
       var lastIdx = -1;
       site.values.forEach(function (v, i) { if (v !== null) lastIdx = i; });
@@ -215,7 +250,10 @@
         }
         rows += '<div class="t-r"><i style="background:' + colour + '"></i>' +
                 esc(site.name) + " <b>" +
-                (v === null ? "no report" : v.toFixed(1) + " %") + "</b></div>";
+                (v === null ? "no report" : v.toFixed(1) + " %") + "</b>" +
+                (v !== null && (v < 0 || v > 100)
+                   ? ' <span style="color:var(--crit)">not possible</span>' : "") +
+                "</div>";
       });
       tip.innerHTML = '<div class="t-d">' + esc(DATA.full[best]) + "</div>" + rows;
       tip.style.opacity = 1;
@@ -273,15 +311,18 @@
       hover(sel, g);
     } else {
       // one panel per site, all on the same scale so heights are comparable
-      var sharedMax = 0;
+      var sharedMax = 0, sharedMin = 0;
       sel.forEach(function (i) {
         DATA.sites[i].values.forEach(function (v) {
-          if (v !== null && v > sharedMax) sharedMax = v;
+          if (v === null) return;
+          if (v > sharedMax) sharedMax = v;
+          if (v < sharedMin) sharedMin = v;
         });
       });
       var panels = sel.map(function (idx) {
         var g = drawChart([idx], { width: 430, height: 150, ml: 30, mr: 14, mb: 20,
-                                   xticks: 4, sharedMax: sharedMax, showLabels: false });
+                                   xticks: 4, sharedMax: sharedMax, sharedMin: sharedMin,
+                                   showLabels: false });
         var site = DATA.sites[idx];
         var vals = site.values.filter(function (v) { return v !== null; });
         var mean = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null;

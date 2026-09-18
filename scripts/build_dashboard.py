@@ -442,6 +442,31 @@ def site_pr_matrix(records, site_rows, window=30):
     return days, names, cells, frozen, capacity
 
 
+def impossible_readings(site_rows, records) -> list:
+    """Site-days a PV array cannot physically have produced.
+
+    An array cannot generate negative energy, and it cannot convert more than the
+    sunlight that landed on it: above 100% of the irradiance either the reading or
+    the stated capacity is wrong. Scanned over all history, not just the charted
+    window, because these are faults to fix rather than performance to track.
+    """
+    ghi = {r["date"]: r["ghi"] for r in records if r.get("ghi")}
+    out = []
+    for row in site_rows:
+        cap, kwh = num(row, "capacity_kw"), num(row, "energy_kwh")
+        g = ghi.get(row["date"])
+        if not (cap and g) or kwh is None:
+            continue
+        pr = kwh / cap / g * 100
+        if kwh < 0:
+            out.append({"date": row["date"], "name": row["name"], "kwh": kwh,
+                        "cap": cap, "pr": pr, "why": "negative generation"})
+        elif pr > 100:
+            out.append({"date": row["date"], "name": row["name"], "kwh": kwh,
+                        "cap": cap, "pr": pr, "why": "more than the available sunlight"})
+    return sorted(out, key=lambda r: r["date"])
+
+
 def site_pr_payload(days, names, cells, frozen, capacity):
     """The per-site series the browser draws, so selection needs no round trip."""
     return {
@@ -458,6 +483,42 @@ def site_pr_payload(days, names, cells, frozen, capacity):
                     for d in days],
         } for name in names],
     }
+
+
+
+def anomaly_notice(bad: list, frozen: dict) -> str:
+    """Call out readings no array could have produced, grouped by site."""
+    real = [b for b in bad if b["name"] not in frozen]
+    if not real:
+        return ""
+    by_site = {}
+    for b in real:
+        by_site.setdefault(b["name"], []).append(b)
+
+    parts = []
+    for name, items in sorted(by_site.items(), key=lambda kv: -len(kv[1])):
+        bits = ", ".join(
+            f'{pretty_date(b["date"])} ({b["kwh"]:,.2f} kWh, {b["pr"]:,.0f}%)'
+            for b in items)
+        parts.append(f'<b>{esc(name.title())}</b> on {bits}')
+
+    neg = [b for b in real if b["kwh"] < 0]
+    tail = ""
+    if neg:
+        tail = (' A negative reading is subtracted from that day\'s plant total, so '
+                'the complex\'s reported generation is understated on those days too. '
+                'Daily figures are usually the difference between two cumulative meter '
+                'readings, and that difference turns negative when the meter is reset, '
+                'replaced, rolls over, or when two readings are recorded out of order '
+                '&mdash; which also produces an impossibly high day on the other side '
+                'of the swap.')
+    return ('<div class="notice"><div class="body">'
+            '<b>Readings that are not physically possible.</b> ' + "; ".join(parts) +
+            '. An array cannot generate negative energy, nor convert more sunlight '
+            'than fell on it, so these are meter or data-entry faults rather than '
+            'performance.' + tail +
+            ' They are left in the dataset exactly as the sheet reported them; '
+            'nothing here is silently corrected.</div></div>')
 
 
 def frozen_notice(frozen: dict) -> str:
@@ -485,8 +546,12 @@ def pr_scale_legend() -> str:
             '<span class="nd"><i></i>no report</span></div>')
 
 
-def site_pr_table(days, names, cells, frozen=None) -> str:
+def site_pr_table(days, names, cells, frozen=None, bad=None) -> str:
     frozen = frozen or {}
+    bad_by_site = {}
+    for b in (bad or []):
+        bad_by_site.setdefault(b["name"], 0)
+        bad_by_site[b["name"]] += 1
     body = []
     for name in names:
         vals = [(d, cells[(name, d)]["pr"]) for d in days if (name, d) in cells]
@@ -505,6 +570,10 @@ def site_pr_table(days, names, cells, frozen=None) -> str:
         if name in frozen:
             flag = (f'<span class="flag">same {frozen[name]:,.2f} kWh every day '
                     f'&mdash; not metered?</span>')
+        elif name in bad_by_site:
+            n_bad = bad_by_site[name]
+            flag = (f'<span class="flag">{n_bad} impossible reading'
+                    f'{"s" if n_bad > 1 else ""} &mdash; check the meter</span>')
         elif zero:
             flag = f'<span class="flag">{zero} days at zero</span>'
         else:
@@ -639,6 +708,7 @@ def build() -> dict:
 
     pr_days, pr_names, pr_cells, pr_frozen, pr_cap = site_pr_matrix(
         records, sites, window=30)
+    bad_readings = impossible_readings(sites, records)
 
     bars_svg, bars_meta = site_bars("p-sites", site_rows, latest_ghi)
     if bars_meta:
@@ -657,6 +727,7 @@ def build() -> dict:
         "site_rows": site_rows, "dead": dead, "latest_ghi": latest_ghi,
         "svg": {"gen": gen_svg, "irr": irr_svg, "pr": pr_svg, "bars": bars_svg},
         "pr_matrix": (pr_days, pr_names, pr_cells, pr_frozen),
+        "bad_readings": bad_readings,
         "pr_payload": (site_pr_payload(pr_days, pr_names, pr_cells, pr_frozen, pr_cap)
                        if pr_days else None),
         "panels_meta": panels_meta,
@@ -902,6 +973,9 @@ def render_body(ctx: dict) -> str:
 
     pr_days, pr_names, pr_cells, pr_frozen = ctx.get("pr_matrix", ([], [], {}, {}))
     payload = ctx.get("pr_payload")
+    bad_readings = ctx.get("bad_readings", [])
+    pr_table_html = site_pr_table(pr_days, pr_names, pr_cells, pr_frozen,
+                                  bad_readings)
     if payload and pr_days:
         # Three is the number of hues that stay distinguishable in every pairing,
         # in both themes, for normal and colour-deficient vision. Past that the
@@ -938,7 +1012,8 @@ def render_body(ctx: dict) -> str:
             '<span class="cap" id="pick-count"></span></div>'
             '<div class="plot" id="siteplot"><div class="tip"></div></div></div>'
             f'<div id="line-table" class="hidden">'
-            f'{site_pr_table(pr_days, pr_names, pr_cells, pr_frozen)}</div>'
+            f'{pr_table_html}</div>'
+            f'{anomaly_notice(bad_readings, pr_frozen)}'
             f'{frozen_notice(pr_frozen)}'
             '</section>')
     else:
