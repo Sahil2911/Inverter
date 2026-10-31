@@ -15,6 +15,7 @@ STEPS = [
     ("Ingesting workbooks from data/inbox", [sys.executable, str(HERE / "ingest.py")]),
     ("Updating irradiance for IFFCO Kalol", [sys.executable, str(HERE / "irradiance.py")]),
     ("Rebuilding dashboard", [sys.executable, str(HERE / "build_dashboard.py")]),
+    ("Writing monthly reports", [sys.executable, str(HERE / "monthly_report.py")]),
 ]
 
 

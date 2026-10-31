@@ -60,7 +60,8 @@ jobs:
           # the newer base always gives the right answer.
           for attempt in 1 2 3; do
             # Generation/ belongs to Power Automate - only derived output is committed
-            git add -A data dashboard
+            # (reports/ holds the monthly Excel workbooks)
+            git add -A data dashboard reports
             if git diff --staged --quiet; then
               echo "Nothing changed."
               exit 0

@@ -1053,6 +1053,9 @@ def render_body(ctx: dict) -> str:
         f'{len(irr_days)} day(s) loaded.</p>'
         # Derived from the data, not the clock: a rebuild that changes nothing
         # then produces an identical file, so scheduled runs commit nothing.
+        '<p><b>Monthly reports</b> — one Excel workbook per month, date against '
+        'net kWh, at <a href="https://github.com/Sahil2911/Inverter/tree/main/reports">'
+        'reports/</a> in the repository. Rewritten whenever the data changes.</p>'
         f'<p>Board reflects data through {esc(pretty_date(through))} · '
         'performance ratio uses nameplate DC capacity from the workbook’s CAPACITY row.</p>'
         '</footer>')

@@ -138,6 +138,25 @@ It surfaces two things the daily figures hide:
 
 Missing days are drawn as breaks in the trend, never as zero.
 
+## Monthly reports
+
+`reports/YYYY-MM_net_generation.xlsx` — one Excel workbook per month, a row for
+every calendar day against the net kWh, with month totals as live formulas.
+
+Two readings are carried side by side: **as printed** (the sheet's own TOTAL NET
+GENERATION cell, the figure the plant circulates) and **sum of site columns**.
+A day whose report never arrived is marked *no report* in red; a day still to
+come is marked *not due yet* in grey, so the two are never confused.
+
+```bash
+python scripts/monthly_report.py                 # every month with data
+python scripts/monthly_report.py --month 2026-10 # just one
+```
+
+Output is byte-identical for identical data — the zip and document timestamps
+are pinned to the last reading the sheet covers, so a daily rebuild does not
+commit five unchanged workbooks every morning.
+
 ## Automation
 
 `.github/workflows/daily-dashboard.yml` runs the pipeline when a workbook is
@@ -151,5 +170,5 @@ current a minute or two later whenever the upload happens. The 04:00 UTC
 (09:30 IST) cron only refreshes irradiance, which firms up from forecast to
 reanalysis over the following days, and covers a run that failed.
 
-The workflow commits the refreshed dataset and dashboard — never `Generation/`
-itself, which belongs to Power Automate.
+The workflow commits the refreshed dataset, dashboard and monthly reports —
+never `Generation/` itself, which belongs to Power Automate.
