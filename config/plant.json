@@ -20,5 +20,10 @@
   "reconciliation_tolerance_kwh": 0.5,
   "source_dirs": [
     "Generation"
-  ]
+  ],
+  "delivery": {
+    "expected_local_time": "08:40",
+    "due_by_local_hour": 10,
+    "note": "Power Automate uploads day D's workbook on D+1 morning. A day counts as missed once D+1 has passed due_by_local_hour in the site timezone, which leaves grace for a late upload before anything is flagged."
+  }
 }

@@ -148,6 +148,14 @@ GENERATION cell, the figure the plant circulates) and **sum of site columns**.
 A day whose report never arrived is marked *no report* in red; a day still to
 come is marked *not due yet* in grey, so the two are never confused.
 
+"Due" is judged against the calendar, not against the newest day in the data.
+Power Automate uploads day D's workbook on D+1 morning, so day D is counted as
+missed once D+1 has passed `delivery.due_by_local_hour` (10:00 IST) in
+`config/plant.json` — leaving grace for a late upload before anything is
+flagged. Bounding it by the data instead would mean that if uploads ever stop,
+every missing day would sit past the end of the data and read as *not due yet*:
+a halted feed would show up as nothing at all.
+
 ```bash
 python scripts/monthly_report.py                 # every month with data
 python scripts/monthly_report.py --month 2026-10 # just one

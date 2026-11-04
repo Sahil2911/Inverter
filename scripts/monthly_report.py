@@ -47,6 +47,30 @@ COLUMNS = [
 ]
 
 
+
+def last_due_day(cfg: dict) -> date:
+    """The most recent day whose report should already have arrived.
+
+    Bounding this by the newest day in the dataset looks right until deliveries
+    stop: the missing days then sit past the end of the data, so every one of
+    them reads as "not due yet" and a halted feed shows up as nothing at all.
+    The boundary has to come from the calendar instead.
+    """
+    from datetime import datetime, timedelta
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(cfg["location"].get("timezone", "UTC"))
+        now = datetime.now(tz)
+    except Exception:                      # no tz database available
+        now = datetime.utcnow()
+    due_hour = cfg.get("delivery", {}).get("due_by_local_hour", 10)
+    day = now.date() - timedelta(days=1)
+    if now.hour < due_hour:
+        # today's delivery window has not closed, so yesterday is not late yet
+        day -= timedelta(days=1)
+    return day
+
+
 def read_daily() -> dict:
     rows = {}
     if not DAILY_CSV.exists():
@@ -196,9 +220,12 @@ def main() -> int:
         return 0
 
     first_day = min(date.fromisoformat(d) for d in daily)
-    last_day = max(date.fromisoformat(d) for d in daily)
+    # the sheet runs to whichever is later: the data, or what is now overdue
+    last_day = max(max(date.fromisoformat(d) for d in daily),
+                   last_due_day(cfg))
     wanted = ([(int(args.month[:4]), int(args.month[5:7]))] if args.month
-              else months_in(daily))
+              else sorted(set(months_in(daily))
+                          | {(last_day.year, last_day.month)}))
     REPORTS.mkdir(parents=True, exist_ok=True)
     written = []
     for year, month in wanted:
