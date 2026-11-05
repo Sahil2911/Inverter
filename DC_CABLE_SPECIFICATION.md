@@ -3,6 +3,10 @@
 Rooftop PV plant, Ahmedabad (Gujarat). DC cabling from PV modules to inverter
 DC input. Prepared 05 Nov 2026.
 
+**Site:** IFFCO Kalol complex (plant + township), 23.2456 N / 72.4986 E —
+**1164.85 kW** total across **18 arrays** (13 plant, 5 township), per
+`config/plant.json` and `data/processed/generation_sites.csv` in this repo.
+
 > **Scope note.** This covers the **DC side only** — module interconnection,
 > string cable to inverter MPPT inputs, and (if used) array-to-combiner runs.
 > AC-side cable, earthing/bonding conductors and LA/earth pits are a separate
@@ -217,23 +221,59 @@ Make these a condition of order, not an afterthought:
 
 ---
 
-## 6. What I need to finalise quantities and sizes
+## 6. Indicative quantity basis
 
-The specification above is complete and can go out as-is. The **BOQ cannot be**
-without these:
+Per **50 kW inverter block** (DC:AC 1.1–1.2, i.e. 55–60 kWp):
 
-1. **Module make/model** — specifically **I_sc, I_mpp, V_oc, V_mpp** and Wp.
-2. **Plant DC capacity** and **number of inverters**.
-3. **Modules per string** and **total number of strings**.
-4. **Which inverter you select** (sets MPPT count → string routing).
-5. **Longest and shortest string route length**, roof to inverter, following
-   actual cable tray/conduit path — not straight-line distance.
+| Module | Modules | Strings @16/str | Cable runs (±) | Avg run 25 m | Avg run 40 m |
+|---|---|---|---|---|---|
+| 540 Wp | ~105 | 6–7 | 12–14 | **300–350 m** | 480–560 m |
+| 580 Wp | ~100 | 6–7 | 12–14 | **300–350 m** | 480–560 m |
+| 620 Wp | ~95 | 6 | 12 | **300 m** | 480 m |
+
+**Rule of thumb: 7–12 m of 4 mm² per kW of DC capacity**, depending on how far
+the array sits from the inverter. Add **10 % wastage** plus allowance for
+terminations and dressing loops.
+
+String count comfortably fits every shortlisted inverter (Sungrow and Solis
+give 10 string inputs; Growatt has 4 MPPTs — verify its input count against
+6–7 strings).
+
+### Candidate M50A locations at Kalol
+
+The arrays large enough to plausibly carry 50 kW-class inverters:
+
+| Array | Capacity | Likely 50 kW units |
+|---|---|---|
+| NARMADA | 236.0 kW | up to 4 |
+| PUMP HOUSE, TRAFFIC & CANTEEN | 229.36 kW | up to 4 |
+| BAGGING | 113.4 kW | up to 2 |
+| ADMIN CLUSTER | 70.0 kW | 1 |
+| MPSS & MCC 13-16 | 70.0 kW | 1 |
+| MCC-2 | 60.0 kW | 1 |
+
+**This is inference from array capacity, not an inventory.** Confirm which
+arrays actually have M50A units before costing.
+
+---
+
+## 7. What I still need to finalise the BOQ
+
+The specification above is complete and can go out to vendors as-is. Site
+capacity and the array breakdown I have taken from this repo. Still needed:
+
+1. **Which arrays have M50A inverters, and how many** — the repo gives array
+   capacities but not inverter make/model per array.
+2. **Module make/model** — specifically **I_sc, I_mpp, V_oc, V_mpp** and Wp.
+3. **Modules per string** and **total strings** per affected array.
+4. **Which replacement inverter you select** (sets MPPT count → string routing).
+5. **Longest and shortest string route length**, roof to inverter, following the
+   actual tray/conduit path — not straight-line distance.
 6. Whether array junction / combiner boxes are retained or deleted.
 7. Mounting: conduit, cable tray, or open-clipped (affects §2.3 derating).
 
-Give me items 1–5 and I will produce the sized BOQ with per-string lengths,
-voltage-drop check per string, and a drum-wise ordering schedule with wastage
-allowance.
+Give me items 1–5 and I will produce the sized BOQ with per-string lengths, a
+voltage-drop check per string, and a drum-wise ordering schedule.
 
 ---
 
