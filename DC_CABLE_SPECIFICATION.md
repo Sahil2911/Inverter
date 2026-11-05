@@ -82,8 +82,9 @@ Exemption: goods manufactured in India purely for export. Not applicable here.
   At 1.5 kV DC rating against a ~1000–1100 V system, this is satisfied with
   very large margin — **voltage never drives the size here.**
 - **Voltage drop:** target **≤1 %** per string run; **2 % absolute maximum**
-  for total DC side. This is what actually drives the size.
-- **Ambient:** Ahmedabad rooftop. Ratings below are quoted at **60 °C ambient**;
+  for total DC side. Computed at **70 °C** conductor temperature, not 90 °C —
+  see §2.4 for why. **This is what actually drives the size.**
+- **Ambient:** Kalol rooftop. Ratings below are quoted at **60 °C ambient**;
   apply the derating factors in §2.3 for cable in conduit/tray on a hot roof.
 
 ### 2.2 Current carrying capacity (60 °C ambient, EN 50618 / IS 17293 basis)
@@ -114,41 +115,94 @@ string cable — see §2.4.
 
 ### 2.4 Maximum run length for voltage drop — THIS drives the size
 
-Worked for a representative modern string: **16 × 580 Wp** module,
-I_mpp = 13.3 A, V_mpp(string) ≈ 696 V. Conductor resistance corrected to
-**90 °C** (factor 1.275) — the conservative case. **One-way** route length:
+**Conductor temperature matters, and 90 °C is the wrong basis here.** At
+~13 A in a 55 A-rated cable, I²R heating is only **5.8 %** of rated loss, so
+the conductor sits essentially at ambient — not at its 90 °C limit. 90 °C is
+correct for *thermal* sizing; for *voltage drop* it overstates resistance by
+~7 %. The tables below use **70 °C**, a realistic hot-roof figure for Kalol.
 
-| Size | ≤1 % drop | ≤1.5 % drop | ≤2 % drop |
+| Temp | R (4 mm²) |
+|---|---|
+| 20 °C | 5.09 Ω/km |
+| 60 °C | 5.89 Ω/km |
+| **70 °C (design)** | **6.09 Ω/km** |
+| 90 °C (thermal limit) | 6.49 Ω/km |
+
+#### Max one-way run at 70 °C
+
+| Size | ≤1 % | ≤1.5 % | ≤2 % |
 |---|---|---|---|
-| 2.5 mm² | 25 m | 37 m | 50 m |
-| **4 mm²** | **40 m** | 60 m | 81 m |
-| **6 mm²** | **61 m** | 91 m | 121 m |
-| 10 mm² | 105 m | 158 m | 210 m |
-| 16 mm² | 165 m | 248 m | 331 m |
-| 25 mm² | 258 m | 387 m | 516 m |
+| 2.5 mm² | 27 m | 40 m | 53 m |
+| **4 mm²** | **43 m** | **64 m** | **86 m** |
+| **6 mm²** | 65 m | 97 m | 129 m |
+| 10 mm² | 112 m | 168 m | 224 m |
+| 16 mm² | 176 m | 264 m | 353 m |
 
-Formula to re-run with your actual numbers:
+*(at I_mpp = 13.3 A, V_mpp = 696 V — a modern 16 × 580 Wp string)*
 
-```
-ΔV = 2 × L(m) × I_mpp(A) × R₉₀(Ω/m)        [×2 for go + return]
-R₉₀ = R₂₀ × 1.275
-% drop = ΔV / V_mpp(string) × 100
-```
+#### The decisive variable is YOUR module current
+
+% drop ∝ (L × I_mpp) / V_mpp. For **4 mm² at 60 m one-way, 70 °C**:
+
+| Module class | I_mpp | Modules/str | V_mpp | Drop @60 m | Verdict |
+|---|---|---|---|---|---|
+| ~330 Wp poly (M50A-era) | 8.8 A | 22 | 825 V | **0.78 %** | ✅ under 1 % |
+| ~330 Wp poly | 8.8 A | 20 | 750 V | **0.86 %** | ✅ under 1 % |
+| ~360 Wp mono/poly | 9.3 A | 20 | 760 V | **0.89 %** | ✅ under 1 % |
+| ~450 Wp mono | 11.0 A | 20 | 800 V | **1.00 %** | ✅ at 1 % |
+| 580 Wp TOPCon | 13.3 A | 18 | 783 V | 1.24 % | ⚠️ under 2 %, over 1 % |
+| 580 Wp TOPCon | 13.3 A | 16 | 696 V | 1.40 % | ⚠️ under 2 %, over 1 % |
+
+**Conclusion: 4 mm² at 60 m is sound provided I_mpp ≲ 11 A.** For a plant of
+M50A vintage — typically 320–400 Wp modules at 8.8–9.3 A — 60 m of 4 mm²
+lands at **0.78–0.89 %**, comfortably inside 1 %. Only high-current modern
+modules (13 A+) push past 1 %, and even those stay under 2 %.
+
+Formula to re-run with your actuals:
+
+    ΔV   = 2 × L(m) × I_mpp(A) × R₇₀(Ω/m)      [×2 for go + return]
+    R₇₀  = R₂₀ × 1.197                          (4 mm²: 0.00609 Ω/m)
+    %drop = ΔV / V_mpp(string) × 100
+
+> **Caveat.** This assumes **individual string runs**, which is what the 4–6
+> MPPT replacement inverters give you. If strings are paralleled *before* the
+> run — the old M50A combiner architecture — current multiplies and 4 mm²
+> fails. Do not apply this to a combined run.
 
 ### 2.5 Recommended selection
 
 | Application | Size | Note |
 |---|---|---|
-| Module-to-module interconnection | 4 mm² | Normally **factory-fitted leads with MC4** — usually nothing to buy |
-| String cable, array → inverter MPPT, run ≤40 m | **4 mm²** | Default. 55 A rating vs ~17.5 A design current — huge margin |
-| String cable, run 40–60 m | **6 mm²** | Use wherever the run exceeds ~40 m to hold 1 % |
-| String cable, run >60 m | 10 mm² | Or relocate the inverter — cheaper than copper |
-| Array JB / combiner → inverter (only if SCB used) | 16–25 mm² | Size on combined string current × 1.25 |
+| Module-to-module interconnection | 4 mm² | **Factory-fitted leads with MC4** — nothing to buy |
+| String cable, run **≤60 m**, I_mpp ≤11 A | **4 mm²** | **Default for this plant.** 55 A rating vs ~11 A design current |
+| String cable, run ≤45 m, I_mpp 13 A+ | 4 mm² | Holds 1 % only to ~43 m at 13.3 A |
+| String cable, run 60–95 m | 6 mm² | Or relocate the inverter — usually cheaper than copper |
+| Array JB / combiner → inverter (only if SCB retained) | 16–25 mm² | Size on **combined** string current × 1.25 |
 
-**Default the BOQ to 4 mm², with 6 mm² for the long rows.** Do not let a
-supplier push 2.5 mm² — it holds only 25 m at 1 %.
+**Standardise on 4 mm² for the whole string-cable BOQ.** Beyond the electrical
+case, two practical arguments reinforce it:
 
----
+1. **Single crimp size.** One MC4 barrel, one die, one spares holding. Mixed
+   4/6 mm² invites mis-crimped connectors, which are the single most common
+   cause of DC-side hot joints.
+2. **Module leads are 4 mm² anyway.** Each module's factory tail is 4 mm², so
+   a 6 mm² run is already in series with ~2 m of 4 mm² per module pair. The
+   upgrade buys less than the cross-section ratio suggests.
+
+Do not let a supplier push **2.5 mm²** — it holds only 27 m at 1 %.
+
+#### Economics check, 50 kW block, 12 runs × 60 m = 720 m
+
+| Module | 4 mm² drop | 6 mm² drop | Loss saved | 25-yr NPV of saving | 6 mm² upgrade cost | Verdict |
+|---|---|---|---|---|---|---|
+| 8.8 A (older) | 0.86 % | 0.57 % | 0.29 % | ≈₹11,800 | ≈₹15,800 | **4 mm² wins** |
+| 13.3 A (modern) | 1.40 % | 0.93 % | 0.47 % | ≈₹19,300 | ≈₹15,800 | 6 mm² marginally pays |
+
+*(1,550 kWh/kW/yr, ₹5/kWh, 8 % discount, ₹22/m premium for 6 mm². Indicative —
+re-run with your actual tariff and quoted rates.)*
+
+For older modules the saving does not recover the copper. **Your judgement is
+the economically correct one.**
 
 ## 3. Impact of the inverter change — read this before fixing quantities
 
@@ -231,7 +285,7 @@ Per **50 kW inverter block** (DC:AC 1.1–1.2, i.e. 55–60 kWp):
 | 580 Wp | ~100 | 6–7 | 12–14 | **300–350 m** | 480–560 m |
 | 620 Wp | ~95 | 6 | 12 | **300 m** | 480 m |
 
-**Rule of thumb: 7–12 m of 4 mm² per kW of DC capacity**, depending on how far
+**Rule of thumb: 7–12 m of 4 mm² per kW of DC capacity** (4 mm² throughout — see §2.5), depending on how far
 the array sits from the inverter. Add **10 % wastage** plus allowance for
 terminations and dressing loops.
 
@@ -262,17 +316,19 @@ arrays actually have M50A units before costing.
 The specification above is complete and can go out to vendors as-is. Site
 capacity and the array breakdown I have taken from this repo. Still needed:
 
-1. **Which arrays have M50A inverters, and how many** — the repo gives array
+1. **Module I_mpp and modules per string** — the single figure that settles
+   the 4 mm² question. If I_mpp ≤ 11 A, 4 mm² at 60 m is confirmed.
+2. **Which arrays have M50A inverters, and how many** — the repo gives array
    capacities but not inverter make/model per array.
-2. **Module make/model** — specifically **I_sc, I_mpp, V_oc, V_mpp** and Wp.
-3. **Modules per string** and **total strings** per affected array.
-4. **Which replacement inverter you select** (sets MPPT count → string routing).
-5. **Longest and shortest string route length**, roof to inverter, following the
+3. **Module make/model** — specifically **I_sc, I_mpp, V_oc, V_mpp** and Wp.
+4. **Total strings** per affected array.
+5. **Which replacement inverter you select** (sets MPPT count → string routing).
+6. **Longest and shortest string route length**, roof to inverter, following the
    actual tray/conduit path — not straight-line distance.
-6. Whether array junction / combiner boxes are retained or deleted.
-7. Mounting: conduit, cable tray, or open-clipped (affects §2.3 derating).
+7. Whether array junction / combiner boxes are retained or deleted.
+8. Mounting: conduit, cable tray, or open-clipped (affects §2.3 derating).
 
-Give me items 1–5 and I will produce the sized BOQ with per-string lengths, a
+Give me items 1–6 and I will produce the sized BOQ with per-string lengths, a
 voltage-drop check per string, and a drum-wise ordering schedule.
 
 ---
