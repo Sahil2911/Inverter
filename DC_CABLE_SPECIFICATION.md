@@ -174,12 +174,14 @@ Formula to re-run with your actuals:
 | Application | Size | Note |
 |---|---|---|
 | Module-to-module interconnection | 4 mm² | **Factory-fitted leads with MC4** — nothing to buy |
-| String cable, run **≤60 m**, I_mpp ≤11 A | **4 mm²** | **Default for this plant.** 55 A rating vs ~11 A design current |
+| String cable, run **≤70 m**, I_mpp ≤9.3 A | **4 mm²** | **Default for this plant.** Holds 1 % to 70 m at 8.8 A |
 | String cable, run ≤45 m, I_mpp 13 A+ | 4 mm² | Holds 1 % only to ~43 m at 13.3 A |
-| String cable, run 60–95 m | 6 mm² | Or relocate the inverter — usually cheaper than copper |
+| String cable, run **60–105 m** | **6 mm²** | Holds 1 % to 105 m at 8.8 A — see §2.5.1 |
+| String cable, run >105 m | 10 mm² | Or relocate the inverter — usually cheaper than copper |
 | Array JB / combiner → inverter (only if SCB retained) | 16–25 mm² | Size on **combined** string current × 1.25 |
 
-**Standardise on 4 mm² for the whole string-cable BOQ.** Beyond the electrical
+**Standardise on 4 mm² for the bulk of the string-cable BOQ**, with 6 mm²
+for identified runs beyond ~70 m (see §2.5.1). Beyond the electrical
 case, two practical arguments reinforce it:
 
 1. **Single crimp size.** One MC4 barrel, one die, one spares holding. Mixed
@@ -190,6 +192,64 @@ case, two practical arguments reinforce it:
    upgrade buys less than the cross-section ratio suggests.
 
 Do not let a supplier push **2.5 mm²** — it holds only 27 m at 1 %.
+
+#### 2.5.1 Long runs (~100 m) — use 6 mm²
+
+Thresholds at **I_mpp 8.8 A, V_mpp 750 V, 70 °C** (i.e. your likely modules):
+
+| Size | Holds ≤1 % to | Holds ≤2 % to |
+|---|---|---|
+| **4 mm²** | **70 m** | 140 m |
+| **6 mm²** | **105 m** | 210 m |
+| 10 mm² | 183 m | 365 m |
+
+So **4 mm² is good to ~70 m, not 100 m.** At 100 m one-way:
+
+| Module | 4 mm² | 6 mm² | 10 mm² |
+|---|---|---|---|
+| ~330 Wp, 20/str (750 V) | 1.43 % | **0.95 %** | 0.55 % |
+| ~330 Wp, 22/str (825 V) | 1.30 % | 0.87 % | 0.50 % |
+| ~360 Wp, 20/str (760 V) | 1.49 % | **0.99 %** | 0.57 % |
+| ~450 Wp, 20/str (800 V) | 1.67 % | 1.12 % | 0.64 % |
+| **580 Wp, 16/str — future re-power** | **2.33 % ✗** | 1.55 % | 0.89 % |
+
+Add ~0.11 % for module interconnect leads (~8 m of 4 mm² in series along a
+20-module string): 4 mm² at 100 m is effectively **1.54 %**, 6 mm² **1.07 %**.
+
+**Energy alone does not justify the upgrade.** For 3 strings at 100 m
+(600 m of cable, 19.8 kWp, 30,690 kWh/yr):
+
+| Upgrade | Drop | Saving | 25-yr NPV | Cost | |
+|---|---|---|---|---|---|
+| 4 → 6 mm² | 1.43 → 0.95 % | 146 kWh/yr (₹732) | ₹7,819 | ₹13,200 | no payback |
+| 4 → 10 mm² | 1.43 → 0.55 % | 271 kWh/yr (₹1,353) | ₹14,442 | ₹39,000 | no payback |
+
+**Specify 6 mm² anyway, for two reasons that are not about today's energy:**
+
+1. **Re-powering headroom — the decisive one.** This cable has a 25-year life;
+   modules get replaced at 12–15 years, and 320–400 Wp modules are already
+   discontinued. Any replacement will be 550 Wp+ at **13–14 A**, which puts
+   4 mm² at 100 m at **2.33 % — outside the 2 % limit**. 6 mm² stays at 1.55 %
+   and survives the swap. Re-pulling 600 m through existing conduit in year 13,
+   with access and shutdown costs, will far exceed ₹13,200 spent now.
+2. **It restores the 1 % budget.** 1.54 % on a string cable consumes most of a
+   2 % whole-DC-side allowance, leaving nothing for leads, JBs and ageing.
+
+**Also do this, free:** group the long strings onto **their own MPPT**. If a
+100 m string shares an MPPT with a 30 m string, the tracker settles on a
+compromise voltage and you lose more than the resistive drop. The 4–6 MPPT
+replacement inverters make this cost nothing.
+
+**And check first whether 100 m is unavoidable** — at that distance, moving the
+inverter closer, or routing those strings to a nearer inverter, is often cheaper
+than any cable size. Lengthening the string (20 → 22 modules) also helps
+slightly, but **only after checking V_oc at minimum site temperature** against
+the inverter's 1000/1100 V ceiling — 22 × 330 Wp is already near it.
+
+> **Two sizes, handled deliberately.** This does mean a second crimp size
+> alongside the 4 mm² bulk. Keep the 6 mm² as a clearly labelled sub-lot for
+> the identified long runs only, with its own crimp die, and mark those strings
+> on the SLD. That is manageable; mixing sizes at random across the plant is not.
 
 #### Economics check, 50 kW block, 12 runs × 60 m = 720 m
 
