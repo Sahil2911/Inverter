@@ -150,4 +150,5 @@ date,ghi_kwh_m2,ghi_mj_m2,sunshine_hours,temp_max_c,precipitation_mm,cloud_cover
 2026-11-24,4.5806,16.49,10.007,31.5,0.0,0,open-meteo-archive
 2026-11-25,4.5306,16.31,10.0,31.4,0.0,0,open-meteo-archive
 2026-11-26,4.525,16.29,10.0,31.3,0.0,5,open-meteo-archive
-2026-11-27,4.45,16.02,10.0,31.6,0.0,21,open-meteo-archive
+2026-11-27,4.45,16.02,10.0,31.6,0.0,13,open-meteo-archive
+2026-11-28,4.4389,15.98,10.0,31.8,0.0,14,open-meteo-archive
